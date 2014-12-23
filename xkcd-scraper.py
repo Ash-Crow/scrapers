@@ -5,8 +5,8 @@ from bs4 import BeautifulSoup
 
 def ordinal(value):
     """
-    Converts zero or a *postive* integer (or their string 
-    representations) to an ordinal value.
+    Converts zero or a *positive* integer (or its string 
+    representation) to an ordinal value.
     """
     try:
         value = int(value)

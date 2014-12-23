@@ -1,4 +1,4 @@
 scrapers
 ========
 
-Python crappy html scrapers.
+Python html scrapers.
