@@ -21,6 +21,11 @@ class Musher(object):
         self.number = ''
         self.name = ''
         self.country = ''
+        self.residence = ''
+        self.final_rank = 0 # 0: didn't finish (no explanation) | -1: disqualified
+        self.last_checkpoint = ''
+        self.dogs_number_start = 0
+        self.dogs_number_end = 0
 
 class Race(object):
     """An edition of the Finnmarkslopet."""
@@ -47,7 +52,7 @@ class Race(object):
         return root_url + '/race/results/musher.jsp?lang=en&rid=' + str(self.id) + '&entr.id=' + str(m_id)
 
     def getStatus(self):
-        if verbose >= 1:
+        if verbose:
             print('Parsing race #{}'.format(self.id))
         """Get all data that can be scrapped from the status page"""
         status_url = r.statusUrl()
@@ -58,7 +63,7 @@ class Race(object):
         self.label = header[0].string
         self.raw_start = header[2].string
 
-        if verbose >= 1:
+        if verbose:
             print('Race: {} - startdate: {}'.format(self.label, self.raw_start))
  
         ###### STATUS GRID ######
@@ -76,9 +81,10 @@ class Race(object):
         #Remove the "→" cells
         checkpoints_data = checkpoints_data[::2]
         for c in checkpoints_data:
-            self.raw_checkpoints.append(c('img')[0].get('title'))
+            title = c('img')[0].get('title')
+            self.raw_checkpoints.append(title.split(':')[0])
 
-        if verbose >= 1:
+        if verbose:
             print("Checkpoints:")
             for c in self.raw_checkpoints:
                 print(c)
@@ -114,14 +120,47 @@ class Race(object):
         musher.number = header[0].string.split('.')[0].strip()
         musher.name = header[0].string.split('.')[1].strip()
         musher.country = header[2]('img')[0].get('title')
+        musher.residence = header[4].string
 
-        print(musher.name, musher.number, musher.country)
+        all_mushers.append(musher.name)
+        if musher.country not in all_countries:
+            all_countries.append(musher.country)
 
+        if musher.residence not in all_cities:
+            all_cities.append(musher.residence)
+
+        if len(header) == 7:
+            if header[6].string == '(Disqualified)':
+                musher.final_rank = -1
+            else:
+                musher.final_rank = int(re.findall(r'\d+$', header[6].string)[0])
         
+        checkpoints = tables[3]('tr')[1::]
 
+        start = checkpoints.pop(0)
+        musher.dogs_number_start = int(start('td')[3].strong.contents[0])
+
+        for row in checkpoints:
+            columns = row('td')
+
+            if columns[1].string and not columns[2].string :
+                if columns[3].string.strip():
+                    musher.dogs_number_end = int(columns[3].string.strip())
+                musher.last_checkpoint = columns[0].string
+                break
+            elif columns[3].strong:
+                musher.dogs_number_end = int(columns[3].strong.contents[0])
+                musher.last_checkpoint = columns[0].strong.string
+
+        if verbose:
+            print(musher.name, musher.number, musher.country, musher.residence, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint)
 
 # Get the races list
 races_ids = []
+all_countries = []
+all_cities = []
+all_checkpoints = []
+all_mushers = []
 
 root_url = 'http://www.finnmarkslopet.no'
 index_url = root_url + '/rhist/results.jsp?lang=en'
@@ -138,17 +177,34 @@ for r in races:
 # Cycle trough the races
 #for r_id in range(1, last_race + 1):
 """
-r_id = 55
+r_id = 57
 r = Race(r_id)
 r.getStatus()
 
-r.getMusherResults(r.mushers[0])
+#musher.residencer.getMusherResults(r.mushers[0])
+r.getMusherResults(2225)
+
 
 for m in r.mushers:
     r.getMusherResults(m)
 """
+
 for r_id in races_ids:
     r = Race(r_id)
     r.getStatus()
     for m in r.mushers:
         r.getMusherResults(m)
+#"""
+print("\n\n=========")
+print("Checkpoints:\n")
+print(sorted(all_checkpoints))
+
+print("\n\n=========")
+print("Countries:\n")
+print(sorted(all_countries))
+print("\n\n=========")
+print("Cities:\n")
+print(sorted(all_cities))
+print("\n\n=========")
+print("Mushers:\n")
+print(sorted(mushers))
