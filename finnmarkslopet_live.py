@@ -81,15 +81,17 @@ class Race(object):
         #Remove the "→" cells
         checkpoints_data = checkpoints_data[::2]
         for c in checkpoints_data:
-            title = c('img')[0].get('title')
-            self.raw_checkpoints.append(title.split(':')[0])
+            checkpoint = c('img')[0].get('title').split(':')[0]
+
+            self.raw_checkpoints.append(checkpoint)
+            if checkpoint not in all_checkpoints:
+                all_checkpoints.append(checkpoint)
 
         if verbose:
             print("Checkpoints:")
             for c in self.raw_checkpoints:
                 print(c)
             print("\n")
-
 
         ###### MUSHER IDS ######
         for s in status:
@@ -182,13 +184,13 @@ r = Race(r_id)
 r.getStatus()
 
 #musher.residencer.getMusherResults(r.mushers[0])
-r.getMusherResults(2225)
+#r.getMusherResults(2225)
 
 
 for m in r.mushers:
     r.getMusherResults(m)
-"""
 
+"""
 for r_id in races_ids:
     r = Race(r_id)
     r.getStatus()
@@ -204,7 +206,7 @@ print("Countries:\n")
 print(sorted(all_countries))
 print("\n\n=========")
 print("Cities:\n")
-print(sorted(all_cities))
+print(all_cities)
 print("\n\n=========")
 print("Mushers:\n")
-print(sorted(mushers))
+print(sorted(all_mushers))
