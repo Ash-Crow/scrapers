@@ -4,6 +4,8 @@
 import requests
 from bs4 import BeautifulSoup
 import json
+from SPARQLWrapper import SPARQLWrapper, JSON
+
 
 try:
     # For Python 3.0 and later
@@ -12,23 +14,17 @@ except ImportError:
     # Fall back to Python 2's urllib2
     from urllib2 import urlopen
 
-
-def wikidata_query(query, props=''):
+def wikidata_sparql_query(query):
     """
-    Queries WDQ and returns the result
+    Queries WDQS and returns the result
     """
-    query_url = 'https://wdq.wmflabs.org/api?q=' + query 
 
-    if props:
-        query_url += '&props=' + props
-
-    response = urlopen(query_url)
-    encoding = response.headers.get_content_charset() or 'utf-8'
-
-    result = json.loads(response.read().decode(encoding))
-
-    return result
-
+    sparql = SPARQLWrapper("https://query.wikidata.org/bigdata/namespace/wdq/sparql")
+    sparql.setQuery(query)
+    
+    sparql.setReturnFormat(JSON)
+    results = sparql.query().convert()
+    return results
 
 def ordinal(value):
     """
@@ -57,12 +53,30 @@ def ordinal(value):
 # Get what is already in Wikidata to ignore it
 imported_episodes = []
 
-query = wikidata_query('claim[31:838795]%20AND%20claim[361:13915]','433')
-for i in query['props']['433']:
+results = wikidata_sparql_query(
+"""
+PREFIX wd: <http://www.wikidata.org/entity/>
+PREFIX wdt: <http://www.wikidata.org/prop/direct/>
+PREFIX wikibase: <http://wikiba.se/ontology#>
+PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
+
+SELECT DISTINCT ?episode ?episodeLabel ?number WHERE {
+  ?episode wdt:P31 wd:Q838795 .
+  ?episode wdt:P361 wd:Q13915 .
+  ?episode wdt:P433 ?number .
+
+  SERVICE wikibase:label {
+    bd:serviceParam wikibase:language "en" .
+  }
+} ORDER BY xsd:integer(?number)
+"""
+)
+
+for r in results["results"]["bindings"]:
     try:
-        imported_episodes.append(int(i[2]))
+        imported_episodes.append(int(r["number"]["value"]))
     except:
-        print("{} has no episode number.".format(i))
+        print("{} has no episode number.".format(r))
 
 latest_imported_episode = max(imported_episodes)
 #print("{} episodes already on Wikidata, the last one is {}.".format(len(imported_episodes), latest_imported_episode))
