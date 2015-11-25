@@ -108,7 +108,7 @@ for a in episodes:
     episodenumber = urlbit.replace("/","")
 
     if int(episodenumber) > latest_imported_episode:
-        descriptions = "strip de xkcd n° " + episodenumber + ", Folge des Webcomics xkcd, " + ordinal(episodenumber) + " strip of the webcomic xkcd"
+        descriptions = "strip de xkcd n°" + episodenumber + ", Folge des Webcomics xkcd, " + ordinal(episodenumber) + " strip of the webcomic xkcd"
         #date = a.attrs.get('title') or ""
         date = "+0000000" + '-'.join(["{0:0>2}".format(v) for v in a.attrs.get('title').split("-")]) + "T00:00:00Z/11" or ""
 
