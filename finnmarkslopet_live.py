@@ -4,7 +4,10 @@
 import requests
 from bs4 import BeautifulSoup
 import json
-import re
+import os               # Files and folder manipulations
+import re               # Regular expressions
+import csv              # CSV file manipulations 
+from collections import Counter
 
 verbose = 1
 
@@ -157,6 +160,47 @@ class Race(object):
         if verbose:
             print(musher.name, musher.number, musher.country, musher.residence, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint)
 
+
+def import_ids():
+    """
+    1. Import the ids of the races on Wikidata and on the official site.
+    2. Import the qids of the mushers on Wikidata
+    """
+    with open(races_dir + 'finnmarkslopet/' + 'finnmarkslopet-qid.csv', 'r') as csv_race_ids:
+        reader = csv.DictReader(csv_race_ids)
+        for row in reader:
+            race_qids[row['race']] = { 'rid': row['rid'], 'qid': row['qid'] }
+    csv_race_ids.closed
+
+    with open(races_dir + 'mushers-qid.csv', 'r') as csv_musher_ids:
+        reader = csv.DictReader(csv_musher_ids)
+        for row in reader:
+            if row['label'] in musher_qids.keys():
+                print('Duplicate Musher: {}'.format(row['label']))
+            musher_qids.update({row['label']: row['qid'] })
+            if row['alias']:
+                aliases = row['alias'].split('|')
+                for alias in aliases:
+                    alias = alias.strip()
+                    if alias in musher_qids.keys():
+                        print('Duplicate Musher: {}'.format(alias))
+                    musher_qids.update({alias: row['qid'] })
+    csv_musher_ids.closed
+
+
+"""
+The main part of the script
+"""
+
+# Initial checks
+dropbox_dir = os.environ['HOME'] + "/Dropbox/"
+races_dir = dropbox_dir + 'finnmarkslopet/'
+race_qids = {}
+musher_qids = {}
+
+import_ids()
+
+
 # Get the races list
 races_ids = []
 all_countries = []
@@ -172,12 +216,14 @@ soup = BeautifulSoup(response.text)
 
 races = soup.select('table.winners a')
 
+"""
 for r in races:
     r_id = int(re.findall(r'\b\d+\b', r.get('href'))[0])
     races_ids.append(r_id)
 
 # Cycle trough the races
 #for r_id in range(1, last_race + 1):
+"""
 """
 r_id = 57
 r = Race(r_id)
@@ -191,12 +237,14 @@ for m in r.mushers:
     r.getMusherResults(m)
 
 """
+"""
 for r_id in races_ids:
     r = Race(r_id)
     r.getStatus()
     for m in r.mushers:
         r.getMusherResults(m)
 #"""
+"""
 print("\n\n=========")
 print("Checkpoints:\n")
 print(sorted(all_checkpoints))
@@ -210,3 +258,4 @@ print(all_cities)
 print("\n\n=========")
 print("Mushers:\n")
 print(sorted(all_mushers))
+#"""
