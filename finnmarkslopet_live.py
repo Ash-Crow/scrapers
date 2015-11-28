@@ -37,6 +37,7 @@ class Musher(WikidataItem):
         self.id = m_id
         self.number = ''
         self.country = ''
+        self.country_qid = ''
         self.residence = ''
         self.final_rank = 0 # 0: didn't finish (no explanation) | -1: disqualified
         self.last_checkpoint = ''
@@ -154,8 +155,9 @@ class Race(WikidataItem):
         raw_header = header[0].string.split('.')
         raw_header = [item.strip() for item in raw_header]
         musher.number = raw_header.pop(0)
-        musher.label = '. '.join(raw_header)
+        musher.label = re.sub(' +',' ', '. '.join(raw_header))
         musher.country = header[2]('img')[0].get('title')
+        musher.country_qid = country_qids[musher.country]
         musher.residence = header[4].string
 
         musher.set_qid()
@@ -191,7 +193,7 @@ class Race(WikidataItem):
                 musher.last_checkpoint = columns[0].strong.string
 
         if verbose:
-            print(musher.label, musher.qid, musher.number, musher.country, musher.residence, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint)
+            print(musher.label, musher.qid, musher.number, musher.country, musher.country_qid, musher.residence, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint)
 
 
 def import_ids():
@@ -220,6 +222,39 @@ def import_ids():
                     musher_qids.update({alias: row['qid'] })
     csv_musher_ids.closed
 
+"""
+Presets
+"""
+country_qids = {
+    'Aragon': 'Q29', #Spain
+    'Austria': 'Q40',
+    'Basque country': 'Q47588',
+    'Belgia': 'Q31',
+    'Catalonia': 'Q29', #Spain
+    'Czech Republic': 'Q213',
+    'Denmark': 'Q35',
+    'England': 'Q145', #UK
+    'Faroe Islands': 'Q4628',
+    'Finland': 'Q33',
+    'France': 'Q142',
+    'Germany': 'Q183',
+    'Great Britain': 'Q145', #UK
+    'Hungary': 'Q28',
+    'Iceland': 'Q189',
+    'Italy': 'Q38',
+    'Nederland': 'Q55',
+    'Norway': 'Q20',
+    'Poland': 'Q36',
+    'Russia': 'Q159',
+    'Scotland': 'Q145', #UK
+    'Slovakia': 'Q214',
+    'Spain': 'Q29',
+    'Sweden': 'Q34',
+    'Swiss': 'Q39',
+    'USA': 'Q30',
+    'Uruguay': 'Q77',
+    'Wales': 'Q145' #UK
+}
 
 """
 The main part of the script
