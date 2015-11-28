@@ -152,10 +152,9 @@ class Race(WikidataItem):
         # The name of the musher can also have a '.', though...
 
         raw_header = header[0].string.split('.')
-        for k, v in enumerate(raw_header):
-            raw_header[k] = v.strip()
+        raw_header = [item.strip() for item in raw_header]
         musher.number = raw_header.pop(0)
-        musher.label = ' '.join(raw_header)
+        musher.label = '. '.join(raw_header)
         musher.country = header[2]('img')[0].get('title')
         musher.residence = header[4].string
 
