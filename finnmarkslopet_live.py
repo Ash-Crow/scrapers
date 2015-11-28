@@ -148,8 +148,14 @@ class Race(WikidataItem):
         
         header = tables[1]('td')
         
-        musher.number = header[0].string.split('.')[0].strip()
-        musher.label = header[0].string.split('.')[1].strip()
+        # The first <td> contains the number and the name with a '.' in between
+        # The name of the musher can also have a '.', though...
+
+        raw_header = header[0].string.split('.')
+        for k, v in enumerate(raw_header):
+            raw_header[k] = v.strip()
+        musher.number = raw_header.pop(0)
+        musher.label = ' '.join(raw_header)
         musher.country = header[2]('img')[0].get('title')
         musher.residence = header[4].string
 
