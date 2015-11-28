@@ -18,29 +18,46 @@ except ImportError:
     # Fall back to Python 2's urllib2
     from urllib2 import urlopen
 
-class Musher(object):
+class WikidataItem(object):
+    def __init__(self):
+        self.label = ''
+        self.qid = ''
+
+    def set_qid(self):
+        if self.label in self.qids_list:
+            self.qid = self.qids_list[self.label]
+        elif verbose:
+            print('Unknown {}: {}'.format(self.type, self.label))
+            unknown_qids.append(self.label)
+        
+class Musher(WikidataItem):
     def __init__(self, m_id):
+        super().__init__()
+        self.type = "musher"
         self.id = m_id
         self.number = ''
-        self.name = ''
         self.country = ''
         self.residence = ''
         self.final_rank = 0 # 0: didn't finish (no explanation) | -1: disqualified
         self.last_checkpoint = ''
         self.dogs_number_start = 0
         self.dogs_number_end = 0
+        self.qids_list = musher_qids
 
-class Race(object):
+
+class Race(WikidataItem):
     """An edition of the Finnmarkslopet."""
 
     # Faire un CSV par course
     #colonnes : numéro de dossard, nom du musher, classement final, lieu d'abandon le cas échéant, source
     def __init__(self, r_id):
+        super().__init__()
+        self.type = "race"
         self.id = r_id
         self.raw_checkpoints = []
-        self.label = ''
         self.raw_start = ''
         self.mushers=[]
+        self.qids_list = race_qids
 
     def statusUrl(self):
         """Returns the URL of the status page for this race"""
@@ -62,9 +79,18 @@ class Race(object):
         response = requests.get(status_url)
         soup = BeautifulSoup(response.text)
 
+
+        # Header is in the form "<race> <year>", we need "<year> <race>"
         header = soup.select('#rshead')[0].find_all('span')
-        self.label = header[0].string
+        raw_label = header[0].string.split()
+        for i in raw_label:
+            if i.isdigit():
+                self.year = i
+                raw_label.remove(i)
+        self.label = "{} {}".format(self.year, ' '.join(raw_label))
         self.raw_start = header[2].string
+
+        self.set_qid()
 
         if verbose:
             print('Race: {} - startdate: {}'.format(self.label, self.raw_start))
@@ -123,11 +149,13 @@ class Race(object):
         header = tables[1]('td')
         
         musher.number = header[0].string.split('.')[0].strip()
-        musher.name = header[0].string.split('.')[1].strip()
+        musher.label = header[0].string.split('.')[1].strip()
         musher.country = header[2]('img')[0].get('title')
         musher.residence = header[4].string
 
-        all_mushers.append(musher.name)
+        musher.set_qid()
+
+        all_mushers.append(musher.label)
         if musher.country not in all_countries:
             all_countries.append(musher.country)
 
@@ -158,7 +186,7 @@ class Race(object):
                 musher.last_checkpoint = columns[0].strong.string
 
         if verbose:
-            print(musher.name, musher.number, musher.country, musher.residence, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint)
+            print(musher.label, musher.qid, musher.number, musher.country, musher.residence, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint)
 
 
 def import_ids():
@@ -169,20 +197,20 @@ def import_ids():
     with open(races_dir + 'finnmarkslopet/' + 'finnmarkslopet-qid.csv', 'r') as csv_race_ids:
         reader = csv.DictReader(csv_race_ids)
         for row in reader:
-            race_qids[row['race']] = { 'rid': row['rid'], 'qid': row['qid'] }
+            race_qids.update({row['race']: row['qid'] })
     csv_race_ids.closed
 
     with open(races_dir + 'mushers-qid.csv', 'r') as csv_musher_ids:
         reader = csv.DictReader(csv_musher_ids)
         for row in reader:
-            if row['label'] in musher_qids.keys():
+            if verbose and row['label'] in musher_qids.keys():
                 print('Duplicate Musher: {}'.format(row['label']))
             musher_qids.update({row['label']: row['qid'] })
             if row['alias']:
                 aliases = row['alias'].split('|')
                 for alias in aliases:
                     alias = alias.strip()
-                    if alias in musher_qids.keys():
+                    if verbose and alias in musher_qids.keys():
                         print('Duplicate Musher: {}'.format(alias))
                     musher_qids.update({alias: row['qid'] })
     csv_musher_ids.closed
@@ -197,8 +225,11 @@ dropbox_dir = os.environ['HOME'] + "/Dropbox/"
 races_dir = dropbox_dir + 'finnmarkslopet/'
 race_qids = {}
 musher_qids = {}
+unknown_qids = []
 
 import_ids()
+
+print(musher_qids)
 
 
 # Get the races list
@@ -216,7 +247,7 @@ soup = BeautifulSoup(response.text)
 
 races = soup.select('table.winners a')
 
-"""
+#"""
 for r in races:
     r_id = int(re.findall(r'\b\d+\b', r.get('href'))[0])
     races_ids.append(r_id)
@@ -224,10 +255,12 @@ for r in races:
 # Cycle trough the races
 #for r_id in range(1, last_race + 1):
 """
-"""
-r_id = 57
+
+r_id = 50
 r = Race(r_id)
 r.getStatus()
+
+
 
 #musher.residencer.getMusherResults(r.mushers[0])
 #r.getMusherResults(2225)
@@ -237,13 +270,13 @@ for m in r.mushers:
     r.getMusherResults(m)
 
 """
-"""
+#"""
 for r_id in races_ids:
     r = Race(r_id)
     r.getStatus()
     for m in r.mushers:
         r.getMusherResults(m)
-#"""
+"""
 """
 print("\n\n=========")
 print("Checkpoints:\n")
@@ -258,4 +291,7 @@ print(all_cities)
 print("\n\n=========")
 print("Mushers:\n")
 print(sorted(all_mushers))
+print("\n\n=========")
+print("Unknown qIDs:\n")
+print(sorted(unknown_qids))
 #"""
