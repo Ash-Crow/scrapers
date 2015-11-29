@@ -41,10 +41,10 @@ class Musher(WikidataItem):
         self.residence = ''
         self.final_rank = 0 # 0: didn't finish (no explanation) | -1: disqualified
         self.last_checkpoint = ''
+        self.last_checkpoint_qid = ''
         self.dogs_number_start = 0
         self.dogs_number_end = 0
         self.qids_list = musher_qids
-
 
 class Race(WikidataItem):
     """An edition of the Finnmarkslopet."""
@@ -192,8 +192,14 @@ class Race(WikidataItem):
                 musher.dogs_number_end = int(columns[3].strong.contents[0])
                 musher.last_checkpoint = columns[0].strong.string
 
+        if musher.last_checkpoint in checkpoints_qids:
+            musher.last_checkpoint_qid = checkpoints_qids[musher.last_checkpoint]
+        else:
+            print("Unknown checkpoint: {}".format(musher.last_checkpoint))
+            unknown_qids.append(musher.last_checkpoint)
+
         if verbose:
-            print(musher.label, musher.qid, musher.number, musher.country, musher.country_qid, musher.residence, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint)
+            print(musher.label, musher.qid, musher.number, musher.country, musher.country_qid, musher.residence, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
 
 
 def import_ids():
@@ -206,6 +212,12 @@ def import_ids():
         for row in reader:
             race_qids.update({row['race']: row['qid'] })
     csv_race_ids.closed
+
+    with open(races_dir + 'finnmarkslopet/' + 'checkpoint-id.csv', 'r') as csv_checkpoints_ids:
+        reader = csv.DictReader(csv_checkpoints_ids)
+        for row in reader:
+            checkpoints_qids.update({row['Checkpoint']: row['qid'] })
+    csv_checkpoints_ids.closed
 
     with open(races_dir + 'mushers-qid.csv', 'r') as csv_musher_ids:
         reader = csv.DictReader(csv_musher_ids)
@@ -256,14 +268,10 @@ country_qids = {
     'Wales': 'Q145' #UK
 }
 
-"""
-The main part of the script
-"""
-
-# Initial checks
 dropbox_dir = os.environ['HOME'] + "/Dropbox/"
 races_dir = dropbox_dir + 'finnmarkslopet/'
 race_qids = {}
+checkpoints_qids = {}
 musher_qids = {}
 unknown_qids = []
 
@@ -271,6 +279,9 @@ import_ids()
 
 print(musher_qids)
 
+"""
+The main part of the script
+"""
 
 # Get the races list
 races_ids = []
