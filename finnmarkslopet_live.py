@@ -28,7 +28,10 @@ class WikidataItem(object):
             self.qid = self.qids_list[self.label]
         elif verbose:
             print('Unknown {}: {}'.format(self.type, self.label))
-            unknown_qids.append(self.label)
+            if self.type == 'race':
+                unknown_races_qids.append(self.label)
+            else:
+                unknown_mushers_qids.append(self.label)
         
 class Musher(WikidataItem):
     def __init__(self, m_id):
@@ -191,12 +194,14 @@ class Race(WikidataItem):
             elif columns[3].strong:
                 musher.dogs_number_end = int(columns[3].strong.contents[0])
                 musher.last_checkpoint = columns[0].strong.string
+            else:
+                musher.last_checkpoint = ('No last checkpoint found for {} in the {}'.format(musher.label, self.label))
 
         if musher.last_checkpoint in checkpoints_qids:
             musher.last_checkpoint_qid = checkpoints_qids[musher.last_checkpoint]
         else:
             print("Unknown checkpoint: {}".format(musher.last_checkpoint))
-            unknown_qids.append(musher.last_checkpoint)
+            unknown_checkpoints_qids.append(musher.last_checkpoint)
 
         if verbose:
             print(musher.label, musher.qid, musher.number, musher.country, musher.country_qid, musher.residence, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
@@ -273,7 +278,9 @@ races_dir = dropbox_dir + 'finnmarkslopet/'
 race_qids = {}
 checkpoints_qids = {}
 musher_qids = {}
-unknown_qids = []
+unknown_races_qids = []
+unknown_checkpoints_qids = []
+unknown_mushers_qids = []
 
 import_ids()
 
@@ -344,5 +351,10 @@ print("Mushers:\n")
 print(sorted(all_mushers))
 print("\n\n=========")
 print("Unknown qIDs:\n")
-print(sorted(unknown_qids))
+print("races:")
+print(sorted(unknown_races_qids))
+print("checkpoints")
+print(sorted(unknown_checkpoints_qids))
+print("mushers")
+print(sorted(unknown_mushers_qids))
 #"""
