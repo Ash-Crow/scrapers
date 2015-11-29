@@ -209,8 +209,7 @@ class Race(WikidataItem):
 
 def import_ids():
     """
-    1. Import the ids of the races on Wikidata and on the official site.
-    2. Import the qids of the mushers on Wikidata
+    Import the qids of the mushers, checkpoints and races on Wikidata
     """
     with open(races_dir + 'finnmarkslopet/' + 'finnmarkslopet-qid.csv', 'r') as csv_race_ids:
         reader = csv.DictReader(csv_race_ids)
