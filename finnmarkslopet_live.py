@@ -184,6 +184,7 @@ class Race(WikidataItem):
         start = checkpoints.pop(0)
         musher.dogs_number_start = int(start('td')[3].strong.contents[0])
 
+
         #Manually manage the most crappy entries.
         if self.qid=='Q18645361' and musher.qid=='Q18674757':
             #Torgeir Øren in 1992 FL Open 
@@ -214,6 +215,7 @@ class Race(WikidataItem):
                 columns = row('td')
 
                 if columns[1].string and not columns[2].string :
+                    dogs = columns[3].string.strip()
                     if columns[3].string.strip():
                         musher.dogs_number_end = int(columns[3].string.strip())
                     musher.last_checkpoint = columns[0].string
@@ -228,6 +230,11 @@ class Race(WikidataItem):
                     col_mess = '' # '| {} || {} || {} || {} |'.format(columns[0], columns[1], columns[2], columns[3])
                     musher.last_checkpoint = ('No last checkpoint found for {} ({}) in the {} ({}) -- {}'.format(musher.label, musher.qid, self.label, self.qid, col_mess))
 
+        #manually force the number of dogs for those who abandoned before the first checkpoint
+        quick_abandons = ['Q21570604', 'Q21462927']
+        if musher.qid in quick_abandons:
+            musher.dogs_number_end = musher.dogs_number_start
+
         if musher.last_checkpoint in checkpoints_qids:
             musher.last_checkpoint_qid = checkpoints_qids[musher.last_checkpoint]
         else:
@@ -235,12 +242,12 @@ class Race(WikidataItem):
                 print(colored("Unknown checkpoint: {}".format(musher.last_checkpoint), 'yellow'))
             unknown_checkpoints_qids.append(musher.last_checkpoint)
 
-        if musher.dogs_number_start ==0:
+        if musher.dogs_number_start <=0:
             if verbose:
                 print(colored("Musher with no dogs at start: {} ({}) in the {} ({})".format(musher.label, musher.qid, self.label, self.qid), 'yellow'))
             no_dogs_at_start.append("{} ({}) in the {} ({})".format(musher.label, musher.qid, self.label, self.qid))
         
-        if musher.dogs_number_end ==0:
+        if musher.dogs_number_end <=0:
             if verbose:
                 print(colored("Musher with no dogs at the end: {} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.qid, self.label, self.qid, musher.final_rank), 'yellow'))
             no_dogs_at_end.append("{} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.qid, self.label, self.qid, musher.final_rank))
@@ -362,8 +369,8 @@ def parse_all_races():
     for r_id in races_ids:
         parse_single_race(r_id)
 
-parse_single_race(52)
-#parse_all_races()
+#parse_single_race(52)
+parse_all_races()
 
 print("\n\n=========")
 print("Checkpoints:\n")
