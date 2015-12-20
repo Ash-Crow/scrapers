@@ -222,7 +222,9 @@ class Race(WikidataItem):
                     musher.dogs_number_end = int(columns[3].strong.contents[0])
                     musher.last_checkpoint = columns[0].strong.string
                 else:
-                    musher.dogs_number_end = int(columns[3].string.strip())
+                    dogs = columns[3].string.strip()
+                    if dogs:
+                        musher.dogs_number_end = int(dogs)
                     col_mess = '' # '| {} || {} || {} || {} |'.format(columns[0], columns[1], columns[2], columns[3])
                     musher.last_checkpoint = ('No last checkpoint found for {} ({}) in the {} ({}) -- {}'.format(musher.label, musher.qid, self.label, self.qid, col_mess))
 
@@ -350,8 +352,6 @@ for r in races:
     races_ids.append(r_id)
 
 # Cycle trough the races
-#for r_id in range(1, last_race + 1):
-#"""
 def parse_single_race(r_id):
     r = Race(r_id)
     r.getStatus()
@@ -362,8 +362,8 @@ def parse_all_races():
     for r_id in races_ids:
         parse_single_race(r_id)
 
-
-parse_all_races()
+parse_single_race(52)
+#parse_all_races()
 
 print("\n\n=========")
 print("Checkpoints:\n")
