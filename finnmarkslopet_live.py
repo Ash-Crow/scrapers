@@ -8,6 +8,7 @@ import os               # Files and folder manipulations
 import re               # Regular expressions
 import csv              # CSV file manipulations 
 from collections import Counter
+from termcolor import colored
 
 verbose = 1
 
@@ -79,7 +80,7 @@ class Race(WikidataItem):
         if verbose:
             print('Parsing race #{}'.format(self.id))
         """Get all data that can be scrapped from the status page"""
-        status_url = r.statusUrl()
+        status_url = self.statusUrl()
         response = requests.get(status_url)
         soup = BeautifulSoup(response.text)
 
@@ -97,7 +98,7 @@ class Race(WikidataItem):
         self.set_qid()
 
         if verbose:
-            print('Race: {} - startdate: {}'.format(self.label, self.raw_start))
+            print(colored('Race: {} ({}) - startdate: {}'.format(self.label, self.qid, self.raw_start), 'green'))
  
         ###### STATUS GRID ######
         # The page has an awful structure with nested tables
@@ -143,7 +144,7 @@ class Race(WikidataItem):
     def getMusherResults(self, m_id):
         musher = Musher(m_id)
 
-        musher_results_url = r.musherResultsUrl(m_id)
+        musher_results_url = self.musherResultsUrl(m_id)
         response = requests.get(musher_results_url)
         soup = BeautifulSoup(response.text)
 
@@ -183,28 +184,67 @@ class Race(WikidataItem):
         start = checkpoints.pop(0)
         musher.dogs_number_start = int(start('td')[3].strong.contents[0])
 
-        for row in checkpoints:
-            columns = row('td')
+        #Manually manage the most crappy entries.
+        if self.qid=='Q18645361' and musher.qid=='Q18674757':
+            #Torgeir Øren in 1992 FL Open 
+            musher.last_checkpoint = 'Strand Camping'
+            musher.dogs_number_end = 0
+        elif self.qid=='Q21585426' and musher.qid=='Q19361431':
+            # Andreas Tømmervik (Q19361431) in the 2015 FL500 (Q21585426)
+            musher.last_checkpoint = 'Jotka'
+            musher.dogs_number_end = 7
+        elif self.qid=='Q21585426' and musher.qid=='Q21585655':
+            # Radek Havrda (Q21585655) in the 2015 FL500 (Q21585426)            
+            musher.last_checkpoint = 'Jotka'
+            musher.dogs_number_end = 6
+        elif self.qid=='Q18645138' and musher.qid=='Q21455487':
+            # Johanne Sundby (Q21455487) in the 2008 FL500 (Q18645138)
+            musher.last_checkpoint = 'Jotka'
+            musher.dogs_number_end = 6
+        elif self.qid=='Q18645147' and musher.qid=='Q21467516':
+            # Mathias Jenssen (Q21467516) in the 2011 FL500 (Q18645147)
+            musher.last_checkpoint = 'Jotka'
+            musher.dogs_number_end = 5
+        elif self.qid=='Q18645150' and musher.qid=='Q21467762':
+            # Øyvind Skogen (Q21467762) in the 2012 FL500 (Q18645150)            
+            musher.last_checkpoint = 'Jotka'
+            musher.dogs_number_end = 7
+        else:
+            for row in checkpoints:
+                columns = row('td')
 
-            if columns[1].string and not columns[2].string :
-                if columns[3].string.strip():
+                if columns[1].string and not columns[2].string :
+                    if columns[3].string.strip():
+                        musher.dogs_number_end = int(columns[3].string.strip())
+                    musher.last_checkpoint = columns[0].string
+                    break
+                elif columns[3].strong:
+                    musher.dogs_number_end = int(columns[3].strong.contents[0])
+                    musher.last_checkpoint = columns[0].strong.string
+                else:
                     musher.dogs_number_end = int(columns[3].string.strip())
-                musher.last_checkpoint = columns[0].string
-                break
-            elif columns[3].strong:
-                musher.dogs_number_end = int(columns[3].strong.contents[0])
-                musher.last_checkpoint = columns[0].strong.string
-            else:
-                musher.last_checkpoint = ('No last checkpoint found for {} in the {}'.format(musher.label, self.label))
+                    col_mess = '' # '| {} || {} || {} || {} |'.format(columns[0], columns[1], columns[2], columns[3])
+                    musher.last_checkpoint = ('No last checkpoint found for {} ({}) in the {} ({}) -- {}'.format(musher.label, musher.qid, self.label, self.qid, col_mess))
 
         if musher.last_checkpoint in checkpoints_qids:
             musher.last_checkpoint_qid = checkpoints_qids[musher.last_checkpoint]
         else:
-            print("Unknown checkpoint: {}".format(musher.last_checkpoint))
+            if verbose:
+                print(colored("Unknown checkpoint: {}".format(musher.last_checkpoint), 'yellow'))
             unknown_checkpoints_qids.append(musher.last_checkpoint)
 
+        if musher.dogs_number_start ==0:
+            if verbose:
+                print(colored("Musher with no dogs at start: {} ({}) in the {} ({})".format(musher.label, musher.qid, self.label, self.qid), 'yellow'))
+            no_dogs_at_start.append("{} ({}) in the {} ({})".format(musher.label, musher.qid, self.label, self.qid))
+        
+        if musher.dogs_number_end ==0:
+            if verbose:
+                print(colored("Musher with no dogs at the end: {} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.qid, self.label, self.qid, musher.final_rank), 'yellow'))
+            no_dogs_at_end.append("{} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.qid, self.label, self.qid, musher.final_rank))
+
         if verbose:
-            print(musher.label, musher.qid, musher.number, musher.country, musher.country_qid, musher.residence, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
+            print(musher.label, musher.qid, musher.number, musher.country, musher.country_qid, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
 
 
 def import_ids():
@@ -280,10 +320,10 @@ musher_qids = {}
 unknown_races_qids = []
 unknown_checkpoints_qids = []
 unknown_mushers_qids = []
+no_dogs_at_start = []
+no_dogs_at_end = []
 
 import_ids()
-
-print(musher_qids)
 
 """
 The main part of the script
@@ -311,30 +351,20 @@ for r in races:
 
 # Cycle trough the races
 #for r_id in range(1, last_race + 1):
-"""
-
-r_id = 50
-r = Race(r_id)
-r.getStatus()
-
-
-
-#musher.residencer.getMusherResults(r.mushers[0])
-#r.getMusherResults(2225)
-
-
-for m in r.mushers:
-    r.getMusherResults(m)
-
-"""
 #"""
-for r_id in races_ids:
+def parse_single_race(r_id):
     r = Race(r_id)
     r.getStatus()
     for m in r.mushers:
         r.getMusherResults(m)
-"""
-"""
+
+def parse_all_races():
+    for r_id in races_ids:
+        parse_single_race(r_id)
+
+
+parse_all_races()
+
 print("\n\n=========")
 print("Checkpoints:\n")
 print(sorted(all_checkpoints))
@@ -343,9 +373,9 @@ print("\n\n=========")
 print("Countries:\n")
 print(sorted(all_countries))
 print("\n\n=========")
-print("Cities:\n")
-print(all_cities)
-print("\n\n=========")
+#print("Cities:\n")
+#print(all_cities)
+#print("\n\n=========")
 print("Mushers:\n")
 print(sorted(all_mushers))
 print("\n\n=========")
@@ -356,4 +386,12 @@ print("checkpoints")
 print(sorted(unknown_checkpoints_qids))
 print("mushers")
 print(sorted(unknown_mushers_qids))
+
+print("\n\n=========")
+print("No dogs at start:")
+print(sorted(no_dogs_at_start))
+
+print("No dogs in the end:")
+for n in no_dogs_at_end:
+    print(n)
 #"""
