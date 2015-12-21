@@ -128,13 +128,16 @@ class Race(WikidataItem):
             print("\n")
 
         ###### MUSHER IDS ######
+        # List of registered mushers that didn't even start the race
+        did_not_start = [133]
         for s in status:
             if len(s.contents) > 1:
                 url = s.find_all('a')
 
                 if len(url):
                     m_id = int(re.findall(r'\d+$', url[0].get('href'))[0])
-                    self.mushers.append(m_id)
+                    if m_id not in did_not_start:
+                        self.mushers.append(m_id)
 
         if verbose >=1:
             print("{} mushers in the race".format(len(self.mushers)))
@@ -159,7 +162,7 @@ class Race(WikidataItem):
         raw_header = header[0].string.split('.')
         raw_header = [item.strip() for item in raw_header]
         musher.number = raw_header.pop(0)
-        musher.label = re.sub(' +',' ', '. '.join(raw_header))
+        musher.label = re.sub(' +',' ', '. '.join(raw_header)).strip()
         musher.country = header[2]('img')[0].get('title')
         musher.country_qid = country_qids[musher.country]
         musher.residence = header[4].string
@@ -184,29 +187,28 @@ class Race(WikidataItem):
         start = checkpoints.pop(0)
         musher.dogs_number_start = int(start('td')[3].strong.contents[0])
 
-
         #Manually manage the most crappy entries.
-        if self.qid=='Q18645361' and musher.qid=='Q18674757':
+        if musher.id==314:
             #Torgeir Øren in 1992 FL Open 
             musher.last_checkpoint = 'Strand Camping'
             musher.dogs_number_end = 0
-        elif self.qid=='Q21585426' and musher.qid=='Q19361431':
-            # Andreas Tømmervik (Q19361431) in the 2015 FL500 (Q21585426)
+        elif musher.id==2177:
+            # Andreas Tømmervik in the 2015 FL500
             musher.last_checkpoint = 'Jotka'
             musher.dogs_number_end = 7
-        elif self.qid=='Q21585426' and musher.qid=='Q21585655':
-            # Radek Havrda (Q21585655) in the 2015 FL500 (Q21585426)            
+        elif musher.id==2266:
+            # Radek Havrda in the 2015 FL500
             musher.last_checkpoint = 'Jotka'
             musher.dogs_number_end = 6
-        elif self.qid=='Q18645138' and musher.qid=='Q21455487':
-            # Johanne Sundby (Q21455487) in the 2008 FL500 (Q18645138)
+        elif musher.id==1033:
+            # Johanne Sundby in the 2008 FL500
             musher.last_checkpoint = 'Jotka'
             musher.dogs_number_end = 6
-        elif self.qid=='Q18645147' and musher.qid=='Q21467516':
-            # Mathias Jenssen (Q21467516) in the 2011 FL500 (Q18645147)
+        elif musher.id==1462:
+            # Mathias Jenssen in the 2011 FL500
             musher.last_checkpoint = 'Jotka'
             musher.dogs_number_end = 5
-        elif self.qid=='Q18645150' and musher.qid=='Q21467762':
+        elif musher.id==1711:
             # Øyvind Skogen (Q21467762) in the 2012 FL500 (Q18645150)            
             musher.last_checkpoint = 'Jotka'
             musher.dogs_number_end = 7
@@ -230,9 +232,21 @@ class Race(WikidataItem):
                     col_mess = '' # '| {} || {} || {} || {} |'.format(columns[0], columns[1], columns[2], columns[3])
                     musher.last_checkpoint = ('No last checkpoint found for {} ({}) in the {} ({}) -- {}'.format(musher.label, musher.qid, self.label, self.qid, col_mess))
 
-        #manually force the number of dogs for those who abandoned before the first checkpoint
-        quick_abandons = ['Q21570604', 'Q21462927']
-        if musher.qid in quick_abandons:
+        #manually force the number of dogs for those who abandoned before the first checkpoint, or at this checkpoint
+        quick_abandons = [312, 2159, 2064, 1273, 999, 981, 343]
+        """
+        Roger Dahl (312) in the 1992 FL Open (has 0 at start and 1 at end, so force him to 0 to ignore the dogs)
+        Jose Sacristan (2159) in the 2015 FL500
+        Krzysztof Nowakowski (2064) in the 2014 FL500
+        Wolfgang Simon-Nilsen (1273) in the 2010 FL500
+        Wolfgang Simon-Nilsen (999) in the 2008 FL500
+        Jakup Hans Heinesen (981) in the 2007 FL500
+        Stefan Borsodi (133) in the 1997 FL1000
+        Gøran Sjøsten (343) in the 1991 FL Open
+
+        For Torgeir Øren (314) in the 1992 FL Open : he has 0 dogs at the beginning and at the end...
+        """
+        if musher.id in quick_abandons:
             musher.dogs_number_end = musher.dogs_number_start
 
         if musher.last_checkpoint in checkpoints_qids:
@@ -244,13 +258,13 @@ class Race(WikidataItem):
 
         if musher.dogs_number_start <=0:
             if verbose:
-                print(colored("Musher with no dogs at start: {} ({}) in the {} ({})".format(musher.label, musher.qid, self.label, self.qid), 'yellow'))
-            no_dogs_at_start.append("{} ({}) in the {} ({})".format(musher.label, musher.qid, self.label, self.qid))
+                print(colored("Musher with no dogs at start: {} ({}) in the {} ({})".format(musher.label, musher.id, self.label, self.qid), 'yellow'))
+            no_dogs_at_start.append("{} ({}) in the {} ({})".format(musher.label, musher.id, self.label, self.qid))
         
         if musher.dogs_number_end <=0:
             if verbose:
-                print(colored("Musher with no dogs at the end: {} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.qid, self.label, self.qid, musher.final_rank), 'yellow'))
-            no_dogs_at_end.append("{} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.qid, self.label, self.qid, musher.final_rank))
+                print(colored("Musher with no dogs at the end: {} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.id, self.label, self.qid, musher.final_rank), 'yellow'))
+            no_dogs_at_end.append("{} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.id, self.label, self.qid, musher.final_rank))
 
         if verbose:
             print(musher.label, musher.qid, musher.number, musher.country, musher.country_qid, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
@@ -286,6 +300,20 @@ def import_ids():
                         print('Duplicate Musher: {}'.format(alias))
                     musher_qids.update({alias: row['qid'] })
     csv_musher_ids.closed
+
+
+def parse_single_race(r_id):
+    r = Race(r_id)
+    r.getStatus()
+    for m in r.mushers:
+        r.getMusherResults(m)
+
+def parse_all_races():
+    for r_id in races_ids:
+        parse_single_race(r_id)
+
+def make_quick_statements():
+    pass
 
 """
 Presets
@@ -359,15 +387,7 @@ for r in races:
     races_ids.append(r_id)
 
 # Cycle trough the races
-def parse_single_race(r_id):
-    r = Race(r_id)
-    r.getStatus()
-    for m in r.mushers:
-        r.getMusherResults(m)
 
-def parse_all_races():
-    for r_id in races_ids:
-        parse_single_race(r_id)
 
 #parse_single_race(52)
 parse_all_races()
