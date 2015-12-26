@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+# Exemple d'une course bien remplie : https://www.wikidata.org/wiki/Q19455277
 
 import requests
 from bs4 import BeautifulSoup
@@ -7,6 +8,7 @@ import json
 import os               # Files and folder manipulations
 import re               # Regular expressions
 import csv              # CSV file manipulations 
+import sys
 from collections import Counter
 from termcolor import colored
 
@@ -269,6 +271,23 @@ class Race(WikidataItem):
         if verbose:
             print(musher.label, musher.qid, musher.number, musher.country, musher.country_qid, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
 
+        self.participant_quick_statements(musher)
+
+    def participant_quick_statements(self, musher):
+        # Doc de QS : https://tools.wmflabs.org/wikidata-todo/quick_statements.php
+        statement = "{} P710 {}".format(self.qid, musher.qid)
+        if musher.number:
+            statement += " P1618 {}".format(musher.number)
+        if musher.final_rank > 0:
+            statement += " P1352 {}".format(musher.final_rank)
+        elif musher.final_rank == -1:
+            # disqualification
+            pass
+        else:
+            # abandon ?
+            pass
+        print(statement)
+
 
 def import_ids():
     """
@@ -312,8 +331,12 @@ def parse_all_races():
     for r_id in races_ids:
         parse_single_race(r_id)
 
-def make_quick_statements():
-    pass
+def save_quick_statements(text):
+    if len(text):
+        file = 'qs.txt'
+        with open(file,"w") as f:
+            f.write(text)
+            f.close()
 
 """
 Presets
@@ -361,6 +384,7 @@ no_dogs_at_start = []
 no_dogs_at_end = []
 
 import_ids()
+quick_statements = ""
 
 """
 The main part of the script
@@ -387,10 +411,11 @@ for r in races:
     races_ids.append(r_id)
 
 # Cycle trough the races
-
-
-#parse_single_race(52)
-parse_all_races()
+if len(sys.argv) > 1:
+    #TODO sanitize input
+    parse_single_race(sys.argv[1])
+else:
+    parse_all_races()
 
 print("\n\n=========")
 print("Checkpoints:\n")
