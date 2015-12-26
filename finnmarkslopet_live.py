@@ -3,7 +3,7 @@
 # Exemple d'une course bien remplie : https://www.wikidata.org/wiki/Q19455277
 
 import requests
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, NavigableString
 import json
 import os               # Files and folder manipulations
 import re               # Regular expressions
@@ -184,72 +184,57 @@ class Race(WikidataItem):
             else:
                 musher.final_rank = int(re.findall(r'\d+$', header[6].string)[0])
         
-        checkpoints = tables[3]('tr')[1::]
+        raw_checkpoints = tables[3]('tr')[1::]
+        cleaned_checkpoints = []
 
-        start = checkpoints.pop(0)
-        musher.dogs_number_start = int(start('td')[3].strong.contents[0])
+        for row in raw_checkpoints:
+            columns = row('td')
+            current_row = {}
 
-        #Manually manage the most crappy entries.
-        if musher.id==314:
-            #Torgeir Øren in 1992 FL Open 
-            musher.last_checkpoint = 'Strand Camping'
+            current_row['checkpoint'] = strip_tags(columns[0])
+            current_row['time_in'] = strip_tags(columns[1])
+            current_row['time_out'] = strip_tags(columns[2])
+            if len(columns) > 3:
+                dogs = strip_tags(columns[3])
+                if dogs:
+                    if not dogs.isdigit():
+                        dogs = re.sub('<s></s>', '', dogs) #empty <s> tag on some lines...
+                    dogs = int(dogs)
+
+                current_row['dogs'] = dogs
+            if len(columns) > 4:
+                current_row['running_time'] = strip_tags(columns[4])
+            if len(columns) > 5:
+                current_row['speed'] = strip_tags(columns[5])
+            if len(columns) > 6:
+                current_row['total_running_time'] = strip_tags(columns[6])
+            if len(columns) > 7:
+                current_row['pause'] = strip_tags(columns[7])
+            if len(columns) > 8:
+                current_row['total_pause'] = strip_tags(columns[8])
+            if len(columns) > 9:
+                current_row['pause_percentage'] = strip_tags(columns[9])
+            if len(columns) > 10:
+                current_row['distance'] = strip_tags(columns[10])
+            if len(columns) > 11:
+                current_row['total_distance'] = strip_tags(columns[11])
+
+            cleaned_checkpoints.append(current_row)
+
+        musher.dogs_number_start = cleaned_checkpoints[0]['dogs'] 
+        for i in cleaned_checkpoints:
+            if i['dogs']:
+                musher.dogs_number_end = i['dogs']
+
+            if i['time_in']:
+                musher.last_checkpoint = i['checkpoint']
+
+        #manually force the number of dogs where the table is wrong
+        dog_number_error = [312, 314]
+
+        if musher.id in dog_number_error:
             musher.dogs_number_end = 0
-        elif musher.id==2177:
-            # Andreas Tømmervik in the 2015 FL500
-            musher.last_checkpoint = 'Jotka'
-            musher.dogs_number_end = 7
-        elif musher.id==2266:
-            # Radek Havrda in the 2015 FL500
-            musher.last_checkpoint = 'Jotka'
-            musher.dogs_number_end = 6
-        elif musher.id==1033:
-            # Johanne Sundby in the 2008 FL500
-            musher.last_checkpoint = 'Jotka'
-            musher.dogs_number_end = 6
-        elif musher.id==1462:
-            # Mathias Jenssen in the 2011 FL500
-            musher.last_checkpoint = 'Jotka'
-            musher.dogs_number_end = 5
-        elif musher.id==1711:
-            # Øyvind Skogen (Q21467762) in the 2012 FL500 (Q18645150)            
-            musher.last_checkpoint = 'Jotka'
-            musher.dogs_number_end = 7
-        else:
-            for row in checkpoints:
-                columns = row('td')
-
-                if columns[1].string and not columns[2].string :
-                    dogs = columns[3].string.strip()
-                    if columns[3].string.strip():
-                        musher.dogs_number_end = int(columns[3].string.strip())
-                    musher.last_checkpoint = columns[0].string
-                    break
-                elif columns[3].strong:
-                    musher.dogs_number_end = int(columns[3].strong.contents[0])
-                    musher.last_checkpoint = columns[0].strong.string
-                else:
-                    dogs = columns[3].string.strip()
-                    if dogs:
-                        musher.dogs_number_end = int(dogs)
-                    col_mess = '' # '| {} || {} || {} || {} |'.format(columns[0], columns[1], columns[2], columns[3])
-                    musher.last_checkpoint = ('No last checkpoint found for {} ({}) in the {} ({}) -- {}'.format(musher.label, musher.qid, self.label, self.qid, col_mess))
-
-        #manually force the number of dogs for those who abandoned before the first checkpoint, or at this checkpoint
-        quick_abandons = [312, 2159, 2064, 1273, 999, 981, 343]
-        """
-        Roger Dahl (312) in the 1992 FL Open (has 0 at start and 1 at end, so force him to 0 to ignore the dogs)
-        Jose Sacristan (2159) in the 2015 FL500
-        Krzysztof Nowakowski (2064) in the 2014 FL500
-        Wolfgang Simon-Nilsen (1273) in the 2010 FL500
-        Wolfgang Simon-Nilsen (999) in the 2008 FL500
-        Jakup Hans Heinesen (981) in the 2007 FL500
-        Stefan Borsodi (133) in the 1997 FL1000
-        Gøran Sjøsten (343) in the 1991 FL Open
-
-        For Torgeir Øren (314) in the 1992 FL Open : he has 0 dogs at the beginning and at the end...
-        """
-        if musher.id in quick_abandons:
-            musher.dogs_number_end = musher.dogs_number_start
+            musher.dogs_number_start = 0
 
         if musher.last_checkpoint in checkpoints_qids:
             musher.last_checkpoint_qid = checkpoints_qids[musher.last_checkpoint]
@@ -269,7 +254,7 @@ class Race(WikidataItem):
             no_dogs_at_end.append("{} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.id, self.label, self.qid, musher.final_rank))
 
         if verbose:
-            print(musher.label, musher.qid, musher.number, musher.country, musher.country_qid, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
+            print(musher.label, musher.id, musher.qid, musher.number, musher.country, musher.country_qid, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
 
         self.participant_quick_statements(musher)
 
@@ -288,6 +273,23 @@ class Race(WikidataItem):
             pass
         print(statement)
 
+def strip_tags(string):
+    if isinstance(string, str):
+        soup = BeautifulSoup(string)
+    else:
+        soup = string
+
+    for tag in soup.findAll(True):
+        s = ""
+
+        for c in tag.contents:
+            if not isinstance(c, NavigableString):
+                c = strip_tags(c)
+            s += str(c).strip()
+
+        tag.replaceWith(s)
+
+    return soup.text.strip()
 
 def import_ids():
     """
@@ -321,11 +323,15 @@ def import_ids():
     csv_musher_ids.closed
 
 
-def parse_single_race(r_id):
+def parse_single_race(r_id, m_id = 0):
     r = Race(r_id)
     r.getStatus()
-    for m in r.mushers:
-        r.getMusherResults(m)
+
+    if m_id:
+        r.getMusherResults(m_id)
+    else:
+        for m in r.mushers:
+            r.getMusherResults(m)
 
 def parse_all_races():
     for r_id in races_ids:
@@ -412,11 +418,17 @@ for r in races:
 
 # Cycle trough the races
 if len(sys.argv) > 1:
-    #TODO sanitize input
-    parse_single_race(sys.argv[1])
+    if all(arg.isdigit() for arg in sys.argv[1:]):
+        if len(sys.argv) == 3:
+            parse_single_race(sys.argv[1], sys.argv[2]) #parse a single musher in a single race
+        else:
+            parse_single_race(sys.argv[1]) #parse all mushers in a single race
+    else:
+        raise ValueError("Invalid arguments")
 else:
     parse_all_races()
 
+"""
 print("\n\n=========")
 print("Checkpoints:\n")
 print(sorted(all_checkpoints))
