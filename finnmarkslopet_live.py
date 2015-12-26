@@ -193,7 +193,7 @@ class Race(WikidataItem):
 
             current_row['checkpoint'] = strip_tags(columns[0])
             current_row['time_in'] = strip_tags(columns[1])
-            current_row['time_out'] = strip_tags(columns[2])
+            #current_row['time_out'] = strip_tags(columns[2])
             if len(columns) > 3:
                 dogs = strip_tags(columns[3])
                 if dogs:
@@ -202,6 +202,7 @@ class Race(WikidataItem):
                     dogs = int(dogs)
 
                 current_row['dogs'] = dogs
+            """
             if len(columns) > 4:
                 current_row['running_time'] = strip_tags(columns[4])
             if len(columns) > 5:
@@ -218,6 +219,7 @@ class Race(WikidataItem):
                 current_row['distance'] = strip_tags(columns[10])
             if len(columns) > 11:
                 current_row['total_distance'] = strip_tags(columns[11])
+            """
 
             cleaned_checkpoints.append(current_row)
 
@@ -228,6 +230,10 @@ class Race(WikidataItem):
 
             if i['time_in']:
                 musher.last_checkpoint = i['checkpoint']
+
+        # if the musher didn't even manage to the first checkpoint
+        if not musher.last_checkpoint:
+            musher.last_checkpoint = cleaned_checkpoints[0]['checkpoint']
 
         #manually force the number of dogs where the table is wrong
         dog_number_error = [312, 314]
