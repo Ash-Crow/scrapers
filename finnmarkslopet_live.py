@@ -4,6 +4,7 @@
 
 import requests
 from bs4 import BeautifulSoup, NavigableString
+import datetime
 import json
 import os               # Files and folder manipulations
 import re               # Regular expressions
@@ -51,6 +52,8 @@ class Musher(WikidataItem):
         self.dogs_number_start = 0
         self.dogs_number_end = 0
         self.qids_list = musher_qids
+        self.finish_time = 0
+        self.total_time = 0
 
 class Race(WikidataItem):
     """An edition of the Finnmarkslopet."""
@@ -193,7 +196,7 @@ class Race(WikidataItem):
 
             current_row['checkpoint'] = strip_tags(columns[0])
             current_row['time_in'] = strip_tags(columns[1])
-            #current_row['time_out'] = strip_tags(columns[2])
+            current_row['time_out'] = strip_tags(columns[2])
             if len(columns) > 3:
                 dogs = strip_tags(columns[3])
                 if dogs:
@@ -223,61 +226,90 @@ class Race(WikidataItem):
 
             cleaned_checkpoints.append(current_row)
 
-        musher.dogs_number_start = cleaned_checkpoints[0]['dogs'] 
-        for i in cleaned_checkpoints:
-            if i['dogs']:
-                musher.dogs_number_end = i['dogs']
+        #check if the musher did start the race at all
+        if cleaned_checkpoints[0]['time_out']:
+            musher.dogs_number_start = cleaned_checkpoints[0]['dogs'] 
+            for i in cleaned_checkpoints:
+                if i['dogs']:
+                    musher.dogs_number_end = i['dogs']
 
-            if i['time_in']:
-                musher.last_checkpoint = i['checkpoint']
+                if i['time_in']:
+                    musher.last_checkpoint = i['checkpoint']
+                    start_time = convert_time(self.year, cleaned_checkpoints[0]['time_out'])
+                    musher.finish_time =  convert_time(self.year,i['time_in'])
 
-        # if the musher didn't even manage to the first checkpoint
-        if not musher.last_checkpoint:
-            musher.last_checkpoint = cleaned_checkpoints[0]['checkpoint']
+                    musher.total_time = int((musher.finish_time - start_time).total_seconds()/60)
 
-        #manually force the number of dogs where the table is wrong
-        dog_number_error = [312, 314]
+            # if the musher didn't even manage to the first checkpoint
+            if not musher.last_checkpoint:
+                musher.last_checkpoint = cleaned_checkpoints[0]['checkpoint']
+                musher.finish_time = convert_time(self.year, cleaned_checkpoints[0]['time_out'])
 
-        if musher.id in dog_number_error:
-            musher.dogs_number_end = 0
-            musher.dogs_number_start = 0
+            #manually force the number of dogs where the table is wrong
+            dog_number_error = [312, 314]
 
-        if musher.last_checkpoint in checkpoints_qids:
-            musher.last_checkpoint_qid = checkpoints_qids[musher.last_checkpoint]
-        else:
+            if musher.id in dog_number_error:
+                musher.dogs_number_end = 0
+                musher.dogs_number_start = 0
+
+            if musher.last_checkpoint in checkpoints_qids:
+                musher.last_checkpoint_qid = checkpoints_qids[musher.last_checkpoint]
+            else:
+                if verbose:
+                    print(colored("Unknown checkpoint: {}".format(musher.last_checkpoint), 'yellow'))
+                unknown_checkpoints_qids.append(musher.last_checkpoint)
+
+            if musher.dogs_number_start <=0:
+                if verbose:
+                    print(colored("Musher with no dogs at start: {} ({}) in the {} ({})".format(musher.label, musher.id, self.label, self.qid), 'yellow'))
+                no_dogs_at_start.append("{} ({}) in the {} ({})".format(musher.label, musher.id, self.label, self.qid))
+            
+            if musher.dogs_number_end <=0:
+                if verbose:
+                    print(colored("Musher with no dogs at the end: {} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.id, self.label, self.qid, musher.final_rank), 'yellow'))
+                no_dogs_at_end.append("{} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.id, self.label, self.qid, musher.final_rank))
+
             if verbose:
-                print(colored("Unknown checkpoint: {}".format(musher.last_checkpoint), 'yellow'))
-            unknown_checkpoints_qids.append(musher.last_checkpoint)
+                print(musher.label, musher.id, musher.qid, musher.number, musher.country, musher.country_qid, str(musher.total_time), str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
 
-        if musher.dogs_number_start <=0:
-            if verbose:
-                print(colored("Musher with no dogs at start: {} ({}) in the {} ({})".format(musher.label, musher.id, self.label, self.qid), 'yellow'))
-            no_dogs_at_start.append("{} ({}) in the {} ({})".format(musher.label, musher.id, self.label, self.qid))
-        
-        if musher.dogs_number_end <=0:
-            if verbose:
-                print(colored("Musher with no dogs at the end: {} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.id, self.label, self.qid, musher.final_rank), 'yellow'))
-            no_dogs_at_end.append("{} ({}) in the {} ({}) -- Final rank: {}".format(musher.label, musher.id, self.label, self.qid, musher.final_rank))
-
-        if verbose:
-            print(musher.label, musher.id, musher.qid, musher.number, musher.country, musher.country_qid, str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
-
-        self.participant_quick_statements(musher)
+            global quick_statements
+            quick_statements += self.participant_quick_statements(musher) + "\n"
 
     def participant_quick_statements(self, musher):
+        # qualifiers in reverse order because QS starts by the end
         # Doc de QS : https://tools.wmflabs.org/wikidata-todo/quick_statements.php
-        statement = "{} P710 {}".format(self.qid, musher.qid)
+        statement = "{}\tP710\t{}".format(self.qid, musher.qid)
+
+        if musher.final_rank > 0 and musher.dogs_number_end > 0:
+            statement += "\tP2105\t{}".format(musher.dogs_number_end)
+
+        if musher.dogs_number_start > 0:
+            statement += "\tP2103\t{}".format(musher.dogs_number_start)
+
         if musher.number:
-            statement += " P1618 {}".format(musher.number)
+            statement += "\tP1618\t\"{}\"".format(musher.number)
+
+        if musher.finish_time:
+            statement += "\tP585\t+0000000{0:%Y}-{0:%m}-{0:%d}T00:00:00Z/11".format(musher.finish_time)
+
+
         if musher.final_rank > 0:
-            statement += " P1352 {}".format(musher.final_rank)
-        elif musher.final_rank == -1:
-            # disqualification
-            pass
+            statement += "\tP2047\t{}".format(musher.total_time)
+            statement += "\tP1352\t{}".format(musher.final_rank)
+
         else:
-            # abandon ?
-            pass
-        print(statement)
+            if musher.last_checkpoint_qid:
+                statement += "\tP276\t{}".format(musher.last_checkpoint_qid)
+
+            if musher.final_rank == -1:
+                # disqualification
+                statement += "\tP793\tQ1229261"
+            else:
+                # abandon
+                statement += "\tP793\tQ18595374"
+        
+        reference = "\tS854\t\"{}\"".format(self.musherResultsUrl(musher.id))
+        return statement + reference
 
 def strip_tags(string):
     if isinstance(string, str):
@@ -296,6 +328,20 @@ def strip_tags(string):
         tag.replaceWith(s)
 
     return soup.text.strip()
+
+def convert_time(year, date_string):
+    # base format is "D/M H:M" 
+    date_chunks = date_string.split()
+    
+    day_month = date_chunks[0].split('/')
+    day = int(day_month[0])
+    month = int(day_month[1])
+
+    hour_min =  date_chunks[1].split(':')
+    hour = int(hour_min[0])
+    minute = int(hour_min[1])
+
+    return datetime.datetime(int(year), month, day, hour, minute)
 
 def import_ids():
     """
@@ -434,7 +480,8 @@ if len(sys.argv) > 1:
 else:
     parse_all_races()
 
-"""
+save_quick_statements(quick_statements)
+
 print("\n\n=========")
 print("Checkpoints:\n")
 print(sorted(all_checkpoints))
