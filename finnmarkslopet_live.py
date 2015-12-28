@@ -65,9 +65,12 @@ class Race(WikidataItem):
         self.type = "race"
         self.id = r_id
         self.raw_checkpoints = []
+        self.checkpoints = []
         self.raw_start = ''
         self.mushers=[]
         self.qids_list = race_qids
+        self.winner = ""
+        self.distance = 0
 
     def statusUrl(self):
         """Returns the URL of the status page for this race"""
@@ -82,9 +85,11 @@ class Race(WikidataItem):
         return root_url + '/race/results/musher.jsp?lang=en&rid=' + str(self.id) + '&entr.id=' + str(m_id)
 
     def getStatus(self):
+        """Get all data that can be scrapped from the status page"""
+
         if verbose:
             print('Parsing race #{}'.format(self.id))
-        """Get all data that can be scrapped from the status page"""
+
         status_url = self.statusUrl()
         response = requests.get(status_url)
         soup = BeautifulSoup(response.text)
@@ -119,17 +124,29 @@ class Race(WikidataItem):
 
         #Remove the "→" cells
         checkpoints_data = checkpoints_data[::2]
+        if verbose:
+                print("Checkpoints:")
         for c in checkpoints_data:
-            checkpoint = c('img')[0].get('title').split(':')[0]
+            checkpoint = c('img')[0].get('title').split(':')[0].strip()
 
             self.raw_checkpoints.append(checkpoint)
             if checkpoint not in all_checkpoints:
                 all_checkpoints.append(checkpoint)
 
+            if checkpoint in checkpoints_qids:
+                self.checkpoints.append(checkpoints_qids[checkpoint])
+                if verbose:
+                        print(checkpoint, checkpoints_qids[checkpoint])
+            else:
+                if verbose:
+                    print(colored("Unknown checkpoint: '{}'".format(checkpoint), 'yellow'))
+                unknown_checkpoints_qids.append("{} (race: {})".format(checkpoint, self.qid))
+
+        self.distance = int(checkpoints_data[-1]('img')[0].get('title').split(':')[1].split()[0])
+
         if verbose:
-            print("Checkpoints:")
-            for c in self.raw_checkpoints:
-                print(c)
+            print("\n")
+            print("Total distance: {}".format(self.distance))
             print("\n")
 
         ###### MUSHER IDS ######
@@ -148,8 +165,8 @@ class Race(WikidataItem):
             print("{} mushers in the race".format(len(self.mushers)))
             print(self.mushers)
 
-
     def getMusherResults(self, m_id):
+        global quick_statements
         musher = Musher(m_id)
 
         musher_results_url = self.musherResultsUrl(m_id)
@@ -186,6 +203,8 @@ class Race(WikidataItem):
                 musher.final_rank = -1
             else:
                 musher.final_rank = int(re.findall(r'\d+$', header[6].string)[0])
+                if musher.final_rank == 1:
+                    self.winner = musher.qid
         
         raw_checkpoints = tables[3]('tr')[1::]
         cleaned_checkpoints = []
@@ -205,29 +224,13 @@ class Race(WikidataItem):
                     dogs = int(dogs)
 
                 current_row['dogs'] = dogs
-            """
-            if len(columns) > 4:
-                current_row['running_time'] = strip_tags(columns[4])
-            if len(columns) > 5:
-                current_row['speed'] = strip_tags(columns[5])
-            if len(columns) > 6:
-                current_row['total_running_time'] = strip_tags(columns[6])
-            if len(columns) > 7:
-                current_row['pause'] = strip_tags(columns[7])
-            if len(columns) > 8:
-                current_row['total_pause'] = strip_tags(columns[8])
-            if len(columns) > 9:
-                current_row['pause_percentage'] = strip_tags(columns[9])
-            if len(columns) > 10:
-                current_row['distance'] = strip_tags(columns[10])
-            if len(columns) > 11:
-                current_row['total_distance'] = strip_tags(columns[11])
-            """
 
             cleaned_checkpoints.append(current_row)
 
         #check if the musher did start the race at all
-        if cleaned_checkpoints[0]['time_out']:
+        if not cleaned_checkpoints[0]['time_out']:
+            self.mushers.remove(m_id)
+        else:
             musher.dogs_number_start = cleaned_checkpoints[0]['dogs'] 
             for i in cleaned_checkpoints:
                 if i['dogs']:
@@ -257,7 +260,7 @@ class Race(WikidataItem):
             else:
                 if verbose:
                     print(colored("Unknown checkpoint: {}".format(musher.last_checkpoint), 'yellow'))
-                unknown_checkpoints_qids.append(musher.last_checkpoint)
+                unknown_checkpoints_qids.append("{} ({} in the {})".format(musher.last_checkpoint, musher.qid, self.qid))
 
             if musher.dogs_number_start <=0:
                 if verbose:
@@ -272,8 +275,35 @@ class Race(WikidataItem):
             if verbose:
                 print(musher.label, musher.id, musher.qid, musher.number, musher.country, musher.country_qid, str(musher.total_time), str(musher.final_rank), str(musher.dogs_number_start), str(musher.dogs_number_end), musher.last_checkpoint, musher.last_checkpoint_qid)
 
-            global quick_statements
-            quick_statements += self.participant_quick_statements(musher) + "\n"
+            #quick_statements += self.participant_quick_statements(musher) + "\n"
+
+    def race_quick_statements(self):
+        reference = "\tS854\t\"{}\"".format(self.statusUrl())
+        
+        #winner
+        statement = "{}\tP1346\t{}".format(self.qid, self.winner) + reference + "\n"
+
+        # entrants
+        statement += "{}\tP1132\t{}".format(self.qid, len(self.mushers)) + reference + "\n"
+
+        # Starting point
+        statement += "{}\tP1427\t{}".format(self.qid, self.checkpoints[0]) + reference + "\n"
+
+        # Destination
+        statement += "{}\tP1444\t{}".format(self.qid, self.checkpoints[-1]) + reference + "\n"
+
+        # Checkpoints
+        for k, v in enumerate(self.checkpoints):
+            rank = k + 1
+            statement += "{}\tP276\t{}\tP1545\t\"{}\"".format(self.qid, v, rank)
+            if rank not in [1, len(self.checkpoints)]:
+                statement += "\tP31\tQ19162210" 
+            statement += reference + "\n"
+
+        # Total distance
+        statement += "{}\tP2043\t{}".format(self.qid, self.distance) + reference + "\n"
+
+        return statement
 
     def participant_quick_statements(self, musher):
         # qualifiers in reverse order because QS starts by the end
@@ -376,6 +406,8 @@ def import_ids():
 
 
 def parse_single_race(r_id, m_id = 0):
+    global quick_statements
+
     r = Race(r_id)
     r.getStatus()
 
@@ -384,6 +416,9 @@ def parse_single_race(r_id, m_id = 0):
     else:
         for m in r.mushers:
             r.getMusherResults(m)
+
+    quick_statements += r.race_quick_statements() + "\n"
+
 
 def parse_all_races():
     for r_id in races_ids:
