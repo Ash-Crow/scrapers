@@ -59,7 +59,7 @@ def resultatliste(r_id):
         else:
             minutes += winner_time
 
-        print('{:>3}\t{:>4}\t{:<25}\t{}\t{}'.format(rank, number, name, time, minutes))
+        print('{:>3}\t{:>4}\t{:<25}\t{:>9}\t{}'.format(rank, number, name, time, minutes))
 
 # variables
 root_url = 'http://www.finnmarkslopet.no'
