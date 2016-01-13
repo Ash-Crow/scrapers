@@ -2,15 +2,9 @@
 # -*- coding: utf-8 -*-
 
 import requests
-from bs4 import BeautifulSoup, NavigableString
-import datetime
-import json
-import os               # Files and folder manipulations
+from bs4 import BeautifulSoup
 import re               # Regular expressions
-import csv              # CSV file manipulations 
 import sys
-from collections import Counter
-from termcolor import colored
 
 try:
     # For Python 3.0 and later
