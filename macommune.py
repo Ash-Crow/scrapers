@@ -31,7 +31,8 @@ class Article(object):
         wd_url = "https://www.wikidata.org/wiki/Special:EntityData/{}.json".format(self.qid)
         print("Fetching: {}".format(wd_url))
         response = requests.get(wd_url)
-        print(json.loads(response.text))
+        wd_content = json.loads(response.text)
+        print(wd_content['sitelinks'])
 
 ######
 commune = Article()
