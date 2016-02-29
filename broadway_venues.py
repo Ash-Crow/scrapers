@@ -13,9 +13,9 @@ verbose = 1
 
 
 def browse_entries(topic, start, end):
-	base_url = 'http://www.ibdb.com/{}}/View/'.format(topic))
+	base_url = 'http://www.ibdb.com/{}}/View/'.format(topic)
 	entries_list= []
-	for i in range(1676, 10000):
+	for i in range(1, 10000):
 		venue_url = base_url + str(i)
 		response = requests.get(venue_url)
 		soup = BeautifulSoup(response.text)
