@@ -8,7 +8,7 @@ import datetime
 import json
 import os               # Files and folder manipulations
 import re               # Regular expressions
-import csv              # CSV file manipulations 
+import csv              # CSV file manipulations
 import sys
 from collections import Counter
 from termcolor import colored
@@ -21,6 +21,7 @@ try:
 except ImportError:
     # Fall back to Python 2's urllib2
     from urllib2 import urlopen
+
 
 class WikidataItem(object):
     def __init__(self):
@@ -36,7 +37,8 @@ class WikidataItem(object):
                 unknown_races_qids.append(self.label)
             else:
                 unknown_mushers_qids.append(self.label)
-        
+
+
 class Musher(WikidataItem):
     def __init__(self, m_id):
         super().__init__()
@@ -46,7 +48,8 @@ class Musher(WikidataItem):
         self.country = ''
         self.country_qid = ''
         self.residence = ''
-        self.final_rank = 0 # 0: didn't finish (no explanation) | -1: disqualified
+        self.final_rank = 0
+        # 0: didn't finish (no explanation) | -1: disqualified
         self.last_checkpoint = ''
         self.last_checkpoint_qid = ''
         self.dogs_number_start = 0
@@ -55,11 +58,17 @@ class Musher(WikidataItem):
         self.finish_time = 0
         self.total_time = 0
 
+
 class Race(WikidataItem):
     """An edition of the Finnmarkslopet."""
 
     # Faire un CSV par course
-    #colonnes : numéro de dossard, nom du musher, classement final, lieu d'abandon le cas échéant, source
+    # colonnes : 
+    # numéro de dossard, 
+    # nom du musher, 
+    # classement final,
+    # lieu d'abandon le cas échéant,
+    # source
     def __init__(self, r_id):
         super().__init__()
         self.type = "race"
