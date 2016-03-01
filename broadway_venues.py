@@ -21,7 +21,7 @@ def browse_entries(item_type, start, end):
 			entries_list.append((i, item_name, item_url))
 
 		elif verbose:
-			print('No {} with identifier {}'.format(item_type, i))
+			print('No {} with identifier {}'.format(item_type.lower(), i))
 
 	return entries_list
 
