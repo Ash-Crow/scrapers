@@ -24,15 +24,28 @@ except ImportError:
 class Article(object):
     def __init__(self):
         self.label = ''
-        self.title = ''
+        self.wp_title = ''
+        self.wp_url = ''
+        self.wp_badges = ''
         self.qid = ''
+        self.country = 0
 
     def getWikidataContent(self):
         wd_url = "https://www.wikidata.org/wiki/Special:EntityData/{}.json".format(self.qid)
         print("Fetching: {}".format(wd_url))
         response = requests.get(wd_url)
-        wd_content = json.loads(response.text)
-        print(wd_content['sitelinks'])
+        wd_content = json.loads(response.text)['entities'][self.qid]
+
+        self.label = wd_content['labels']['fr']['value']
+
+        self.country = wd_content['claims']['P17'][0]['mainsnak']['datavalue']['value']['numeric-id']
+        print(self.country)
+
+        self.wp_title = wd_content['sitelinks']['frwiki']['title']
+        self.wp_url = wd_content['sitelinks']['frwiki']['url']
+        self.wp_badges = wd_content['sitelinks']['frwiki']['badges']
+
+        print(self.label, self.wp_title, self.wp_url, self.wp_badges)
 
 ######
 commune = Article()
