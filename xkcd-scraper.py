@@ -94,7 +94,7 @@ index_url = root_url + '/archive/index.html'
 response = requests.get(index_url)
 soup = BeautifulSoup(response.text)
 
-header = "qid, s854|url source, Lfr, Len, Lbr, Lde, Dfr, Dde, Den, p31, p361|partie de, p433|numéro, p577|date de publication, p50|auteur, p854|url"
+header = "qid, s854|url source, Lfr, Len, Lbr, Lde, Dfr, Dde, Den, p31, p361|partie de, p433|numéro, p577|date de publication, p50|auteur, p2699|url"
 
 print(header)
 
