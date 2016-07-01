@@ -25,16 +25,20 @@ sparql.setReturnFormat(JSON)
 results = sparql.query().convert()
 
 used_langs = {}
+labels = {}
 for result in results["results"]["bindings"]:
     item = result['item']['value'].rsplit('/', 1)[-1]
     if item not in used_langs:
         used_langs[item] = []
     lang = result["label"]["xml:lang"]
     label = result["label"]['value']
+    if lang == 'en':
+        labels[item] = label
     used_langs[item].append(lang)
 
 for item, values in used_langs.items():
     missing_langs = set(all_langs) - set(values)
 
     for m in missing_langs:
+        label = labels[item]
         print("\t".join((item, 'L' + m, label)))
