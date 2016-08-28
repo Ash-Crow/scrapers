@@ -1,34 +1,27 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 import requests
 from bs4 import BeautifulSoup
-import json
 from SPARQLWrapper import SPARQLWrapper, JSON
 
-
-try:
-    # For Python 3.0 and later
-    from urllib.request import urlopen
-except ImportError:
-    # Fall back to Python 2's urllib2
-    from urllib2 import urlopen
 
 def wikidata_sparql_query(query):
     """
     Queries WDQS and returns the result
     """
-
-    sparql = SPARQLWrapper("https://query.wikidata.org/bigdata/namespace/wdq/sparql")
+    endpoint = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
+    sparql = SPARQLWrapper(endpoint)
     sparql.setQuery(query)
-    
+
     sparql.setReturnFormat(JSON)
     results = sparql.query().convert()
     return results
 
+
 def ordinal(value):
     """
-    Converts zero or a *positive* integer (or its string 
+    Converts zero or a *positive* integer (or its string
     representation) to an ordinal value.
     """
     try:
@@ -79,7 +72,6 @@ for r in results["results"]["bindings"]:
         print("{} has no episode number.".format(r))
 
 latest_imported_episode = max(imported_episodes)
-#print("{} episodes already on Wikidata, the last one is {}.".format(len(imported_episodes), latest_imported_episode))
 
 for i in range(1, latest_imported_episode):
     # There is no episode 404.
