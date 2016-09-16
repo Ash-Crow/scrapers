@@ -4,7 +4,7 @@
 from bs4 import BeautifulSoup, Tag
 from SPARQLWrapper import SPARQLWrapper, JSON
 
-# Get content from the CSSD website
+# Get content from the AADA website
 soup = BeautifulSoup(open("temp.html"), 'lxml')
 
 alumni = soup.select(".alumni_casting_listing figcaption")
