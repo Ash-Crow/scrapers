@@ -29,7 +29,7 @@ def ordinal(value):
     except ValueError:
         return value
 
-    if value % 100//10 != 1:
+    if value % 100 // 10 != 1:
         if value % 10 == 1:
             ordval = u"%d%s" % (value, "st")
         elif value % 10 == 2:
@@ -46,13 +46,7 @@ def ordinal(value):
 # Get what is already in Wikidata to ignore it
 imported_episodes = []
 
-results = wikidata_sparql_query(
-"""
-PREFIX wd: <http://www.wikidata.org/entity/>
-PREFIX wdt: <http://www.wikidata.org/prop/direct/>
-PREFIX wikibase: <http://wikiba.se/ontology#>
-PREFIX xsd:   <http://www.w3.org/2001/XMLSchema#>
-
+results = wikidata_sparql_query("""
 SELECT DISTINCT ?episode ?episodeLabel ?number WHERE {
   ?episode wdt:P31 wd:Q838795 .
   ?episode wdt:P361 wd:Q13915 .
@@ -62,8 +56,7 @@ SELECT DISTINCT ?episode ?episodeLabel ?number WHERE {
     bd:serviceParam wikibase:language "en" .
   }
 } ORDER BY xsd:integer(?number)
-"""
-)
+""")
 
 for r in results["results"]["bindings"]:
     try:

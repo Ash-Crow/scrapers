@@ -26,14 +26,12 @@ for result in results["results"]["bindings"]:
 
     label = label[:1].lower() + label[1:]
 
-    out += "{}\tLfr\t{}".format(item, label)
+    out += "{}\tLfr\t{}\n".format(item, label)
 
-print(out)
 
 f = open('temp.txt', 'w')
 f.write(out)
 f.close()
-
 
 qs_url = "https://tools.wmflabs.org/wikidata-todo/quick_statements.php"
 
