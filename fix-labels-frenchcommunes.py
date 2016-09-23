@@ -43,6 +43,7 @@ for result in results["results"]["bindings"]:
 
 for item, values in used_langs.items():
     missing_langs = set(all_langs) - set(values)
+    missing_langs.sort()
 
     for m in missing_langs:
         label = labels[item]
