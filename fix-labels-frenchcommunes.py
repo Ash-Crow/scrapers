@@ -46,7 +46,7 @@ for item, values in used_langs.items():
 
     for m in missing_langs:
         label = labels[item]
-        out += "{}\tLfr\t{}\n".format(item, label)
+        out += "{}\tL{}\t{}\n".format(item, m, label)
         label_counter += 1
 
     out += "\n"
