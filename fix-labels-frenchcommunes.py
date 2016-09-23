@@ -18,13 +18,16 @@ sparql.setQuery("""
 PREFIX wd: <http://www.wikidata.org/entity/>
 PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 SELECT DISTINCT ?item ?label WHERE {{
-  ?item wdt:P31/wdt:P279* wd:Q484170 . 
+  ?item wdt:P31/wdt:P279* wd:Q484170 .
   ?item wdt:P131 ?dept .
-  ?dept wdt:P2586 "04" .
+  ?dept wdt:P2586 "05" .
   ?item rdfs:label ?label .
 }}""")
 sparql.setReturnFormat(JSON)
 results = sparql.query().convert()
+
+out = ""
+label_counter = 0
 
 used_langs = {}
 labels = {}
@@ -43,4 +46,18 @@ for item, values in used_langs.items():
 
     for m in missing_langs:
         label = labels[item]
-        print("\t".join((item, 'L' + m, label)))
+        out += "{}\tLfr\t{}\n".format(item, label)
+        label_counter += 1
+
+    out += "\n"
+
+f = open('temp.txt', 'w')
+f.write(out)
+f.close()
+
+qs_url = "https://tools.wmflabs.org/wikidata-todo/quick_statements.php"
+
+print("Operation complete! {} labels added on {} items.".format(
+    label_counter,
+    len(labels)))
+print("- Please paste the content of temp.txt to {}".format(qs_url))
