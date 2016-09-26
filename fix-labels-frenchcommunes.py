@@ -1,5 +1,15 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
+import argparse
 
+
+parser = argparse.ArgumentParser(
+    description='Fixes labels for French communes.')
+parser.add_argument("departement", help="The number of a departement")
+args = parser.parse_args()
+if args.departement.isdigit():
+    dept = '"{}"'.format(args.departement)
+else:
+    dept = "?dept"
 
 all_langs = ['af', 'an', 'ast', 'bar', 'bm', 'br', 'ca', 'co', 'cs', 'cy',
              'da', 'de', 'de-at', 'de-ch', 'en', 'en-ca', 'en-gb', 'eo', 'es',
@@ -15,14 +25,12 @@ endpoint = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 
 sparql = SPARQLWrapper(endpoint)
 sparql.setQuery("""
-PREFIX wd: <http://www.wikidata.org/entity/>
-PREFIX wdt: <http://www.wikidata.org/prop/direct/>
 SELECT DISTINCT ?item ?label WHERE {{
   ?item wdt:P31/wdt:P279* wd:Q484170 .
   ?item wdt:P131 ?dept .
-  ?dept wdt:P2586 "05" .
+  ?dept wdt:P2586 {} .
   ?item rdfs:label ?label .
-}}""")
+}}""".format(dept))
 sparql.setReturnFormat(JSON)
 results = sparql.query().convert()
 
@@ -43,7 +51,7 @@ for result in results["results"]["bindings"]:
 
 for item, values in used_langs.items():
     missing_langs = set(all_langs) - set(values)
-    missing_langs.sort()
+    missing_langs = sorted(missing_langs)
 
     for m in missing_langs:
         label = labels[item]
