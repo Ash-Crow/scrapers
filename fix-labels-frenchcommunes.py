@@ -8,6 +8,10 @@ parser.add_argument("departement", help="The number of a departement")
 args = parser.parse_args()
 if args.departement.isdigit():
     dept = '"{}"'.format(args.departement)
+    f = open('temp-lastdept.txt', 'w')
+    f.write(dept)
+    f.close()
+
 else:
     dept = "?dept"
 
