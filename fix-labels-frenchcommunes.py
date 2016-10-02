@@ -36,6 +36,7 @@ results = sparql.query().convert()
 
 out = ""
 label_counter = 0
+item_counter = 0
 
 used_langs = {}
 labels = {}
@@ -53,12 +54,16 @@ for item, values in used_langs.items():
     missing_langs = set(all_langs) - set(values)
     missing_langs = sorted(missing_langs)
 
+    modified_item_counter = 0
     for m in missing_langs:
         label = labels[item]
         out += "{}\tL{}\t{}\n".format(item, m, label)
         label_counter += 1
+        modified_item_counter += 1
 
-    out += "\n"
+    if modified_item_counter:
+        out += "\n"
+        item_counter += 1
 
 f = open('temp.txt', 'w')
 f.write(out)
@@ -66,7 +71,8 @@ f.close()
 
 qs_url = "https://tools.wmflabs.org/wikidata-todo/quick_statements.php"
 
-print("Operation complete! {} labels added on {} items.".format(
+print("Operation complete! {} labels added on {}/{} items.".format(
     label_counter,
-    len(labels)))
+    item_counter,
+    len(used_langs)))
 print("- Please paste the content of temp.txt to {}".format(qs_url))
