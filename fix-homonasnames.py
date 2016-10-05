@@ -6,15 +6,28 @@ endpoint = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 
 sparql = SPARQLWrapper(endpoint)
 sparql.setQuery("""
-SELECT DISTINCT ?item ?itemLabel (SAMPLE(?familyname) AS ?familyname) WHERE {
-  ?item wdt:P734 ?allnames, ?name.
+SELECT DISTINCT
+?item
+?itemLabel
+?familyname
+?familynameLabel
+WHERE {
+  {
+    SELECT DISTINCT
+    ?item 
+    (SAMPLE(?familyname) AS ?familyname)
+    WHERE {
+      ?item wdt:P734 ?name .
 
-  ?name wdt:P31 wd:Q4167410 ;
-        wdt:P1889 ?notconfusewith, ?familyname .
-    ?familyname wdt:P31 wd:Q101352 .
-
-    SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
-} GROUP BY ?item ?itemLabel HAVING (COUNT(?allnames) = 1 && COUNT(?notconfusewith) = 1)
+      ?name wdt:P31 wd:Q4167410 ;
+            wdt:P1889 ?familyname .
+      
+      ?familyname wdt:P31 wd:Q101352 .
+    } GROUP BY ?item HAVING (COUNT(?name) = 1 && COUNT(?familyname) = 1) ORDER BY ?item_label
+  }
+  
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en,es,pl,it,ru" }
+} ORDER BY ?familynameLabel
 """)  # Link to query: http://tinyurl.com/hmk5x3o
 
 sparql.setReturnFormat(JSON)
