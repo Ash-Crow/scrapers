@@ -9,26 +9,37 @@ sparql.setQuery("""
 SELECT DISTINCT
 ?item
 ?itemLabel
-?familyname
 ?familynameLabel
+?familyname
 WHERE {
   {
     SELECT DISTINCT
-    ?item 
+    ?item
     (SAMPLE(?familyname) AS ?familyname)
     WHERE {
-      ?item wdt:P734 ?name .
+      ?item wdt:P734 ?allnames, ?name .
 
       ?name wdt:P31 wd:Q4167410 ;
             wdt:P1889 ?familyname .
-      
+
       ?familyname wdt:P31 wd:Q101352 .
-    } GROUP BY ?item HAVING (COUNT(?name) = 1 && COUNT(?familyname) = 1) ORDER BY ?item_label
+
+      FILTER(?familyname NOT IN (
+        wd:Q21488047,
+        wd:Q21502319,
+        wd:Q21488251,
+        wd:Q21488880,
+        wd:Q21507956,
+        wd:Q21494599
+      ))
+    } GROUP BY ?item
+      HAVING (COUNT(?allnames) = 1 && COUNT(?familyname) = 1)
+      ORDER BY ?item_label
   }
-  
-  SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en,es,pl,it,ru" }
+
+  SERVICE wikibase:label { bd:serviceParam wikibase:language "fr,en,es,pl,it" }
 } ORDER BY ?familynameLabel
-""")  # Link to query: http://tinyurl.com/hmk5x3o
+""")  # Link to query: <>
 
 sparql.setReturnFormat(JSON)
 
@@ -61,5 +72,5 @@ print("\n=============")
 print("Operation complete!")
 print("- Please paste the content of temp-qs.txt to {}".format(qs_url))
 ps_txt = "- Please paste the content of temp-ps.txt to {} ".format(ps_url)
-ps_txt += "and run the command '-P31:Q4167410'"
+ps_txt += "and run the command '-P734'"
 print(ps_txt)
