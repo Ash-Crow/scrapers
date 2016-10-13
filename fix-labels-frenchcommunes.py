@@ -32,7 +32,8 @@ sparql.setQuery("""
 SELECT DISTINCT ?item ?label WHERE {{
   ?item wdt:P31/wdt:P279* wd:Q484170 .
   ?item wdt:P131 ?dept .
-  ?dept wdt:P2586 {} .
+  ?dept wdt:P2586 ?deptnum .
+  FILTER(STRSTARTS(?deptnum, {})) .
   ?item rdfs:label ?label .
 }}""".format(dept))
 sparql.setReturnFormat(JSON)
