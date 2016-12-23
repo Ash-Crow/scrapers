@@ -1,17 +1,23 @@
 from SPARQLWrapper import SPARQLWrapper, JSON
 from urllib import parse
 
+limit = 500000
+
 endpoint = "https://query.wikidata.org/bigdata/namespace/wdq/sparql"
 
 sparql = SPARQLWrapper(endpoint)
 sparql.setQuery("""
-SELECT ?item ?itemLabel ?article
-WHERE
-{
-  ?item wdt:P31/wdt:P279* wd:Q202444 .
+SELECT ?item ?itemLabel ?article WHERE {
+  ?item wdt:P31 ?type .
+  VALUES ?type {
+    wd:Q202444
+    wd:Q11879590
+    wd:Q18220911
+    wd:Q3409032
+  } .
   ?article schema:about ?item .
   SERVICE wikibase:label { bd:serviceParam wikibase:language "en" }
-} LIMIT 5000
+}
 """)
 sparql.setReturnFormat(JSON)
 results = sparql.query().convert()
@@ -33,5 +39,5 @@ for result in results["results"]["bindings"]:
             title))
         counter += 1
 
-    if counter >= 500:
+    if counter >= limit:
         break
